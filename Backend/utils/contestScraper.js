@@ -1,6 +1,12 @@
 import axios from "axios";
 import Contest from "../src/models/Contest.js";
-import cheerio from "cheerio";
+import utc from "dayjs/plugin/utc.js";
+import puppeteer from "puppeteer";
+import { load } from "cheerio";
+import dayjs from "dayjs"; 
+
+import timezone from "dayjs/plugin/timezone.js";
+
 import moment from "moment";
 //From codeforces Fetching Contest
 const fetchCodeforcesContest = async () => {
@@ -25,52 +31,165 @@ const fetchCodeforcesContest = async () => {
 
 //From LeetCode Fetching Contest
 
-const fetchLeetCodeContest = async () => {
-    try{
-      const url = "https://leetcode.com/contest/";
-      const {data} = await axios.get(url);
-      const $ = cheerio.load(data);
 
-        const contests = [];
-    }
-    catch(err){
-        console.error("Error getting contest from LeetCode Contest:",err);
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+// ✅ Correct function placement (Outside Puppeteer context)
+const parseLeetCodeDate = (dateString) => {
+    if (!dateString || dateString === "N/A") return null;
+
+    // Example: "Sunday 8:00 AM GMT+5:30"
+    const match = dateString.match(/(\w+) (\d{1,2}):(\d{2}) (\w{2}) GMT([+-]\d{1,2}):(\d{2})/);
+    if (!match) return null;
+
+    const [, , hours, minutes, period] = match;
+
+    let hour24 = parseInt(hours, 10);
+    if (period === "PM" && hour24 !== 12) hour24 += 12;
+    if (period === "AM" && hour24 === 12) hour24 = 0;
+
+    return dayjs()
+        .tz("Asia/Kolkata")
+        .hour(hour24)
+        .minute(parseInt(minutes, 10))
+        .second(0)
+        .toDate();
+};
+
+const fetchLeetCodeContests = async () => {
+    const browser = await puppeteer.launch({ headless: "new" });
+    const page = await browser.newPage();
+
+    // Mimic a real browser to avoid detection
+    await page.setUserAgent(
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    );
+
+    try {
+        // Navigate to the LeetCode contests page
+        await page.goto("https://leetcode.com/contest/", { waitUntil: "domcontentloaded" });
+
+        // Wait for the swiper-wrapper to load
+        await page.waitForSelector(".swiper-wrapper");
+
+        // Extract contest data
+        let contests = await page.evaluate(() => {
+            return Array.from(document.querySelectorAll(".swiper-wrapper .swiper-slide")).map(card => {
+                const href = card.querySelector("a")?.getAttribute("href") || "";
+                if(card.querySelector(".text-label-2, .dark\\:text-dark-label-2")){
+                return {
+                    name: card.querySelector(".flex .items-center .truncate")?.innerText.trim() || href.replace("/contest/", ""),
+                    url: "https://leetcode.com" + href,
+                    start_time_text : card.querySelector(".text-label-2, .dark\\:text-dark-label-2")?.innerText.trim(),
+
+                    platform: "LeetCode",
+                    duration: 120,
+                };}
+                return null;
+            });
+        });
+        contests = contests.filter(c => c!==null);
+        console.log("contest", contests);
+        const upcomingContests = contests
+            .map(contest => {
+                const parsedDate = parseLeetCodeDate(contest.start_time_text);
+                console.log("date",typeof(parsedDate));
+                return {
+                    ...contest,
+                    startTime: parsedDate ? parsedDate.toISOString() : null, // ISO format
+                };
+            })
+
+        console.log("contest_leetcode", upcomingContests);
+        return upcomingContests;
+    } catch (error) {
+        console.error("Error fetching LeetCode contests:", error);
         return [];
+    } finally {
+        await browser.close();
     }
 };
 
 
-//From CodeChef Fetching Contest
+
+// Call the function to test
+
+
+
+
+
+//for codechef
 
 // const fetchCodeChefContests = async () => {
+//     const browser = await puppeteer.launch({ headless: true });
+//     const page = await browser.newPage();
+
 //     try {
-//       const response = await axios.get("https://kontests.net/api/v1/code_chef");
-//       const contests = response.data;
-  
-//       return contests.map((c) => ({
-//         platform: "CodeChef",
-//         name: c.name,
-//         url: c.url,
-//         startTime: new Date(c.start_time),
-//         endTime: new Date(c.end_time),
-//         duration: c.duration / 60, // Convert seconds to minutes
-//         status: "Upcoming",
-//       }));
+//         // Navigate to the CodeChef contests page
+//         await page.goto('https://www.codechef.com/contests', { waitUntil: 'domcontentloaded' });
+         
+         
+         
+//         // Wait for the contest tables to load
+//         await page.waitForSelector('.dataTable');
+
+//         // Extract contest data
+//         const contests = await page.evaluate(() => {
+//             const parseDate = (dateStr) => {
+//                 const [day, month, year, time] = dateStr.split(' ');
+//                 return new Date(`${month} ${day}, ${year} ${time} UTC`);
+//             };
+
+//             const upcomingContests = [];
+//             const tables = document.querySelectorAll('.dataTable');
+            
+//             // Assuming the first table is for ongoing contests and the second for upcoming
+//             if (tables.length > 1) {
+//                 const rows = tables[1].querySelectorAll('tbody tr');
+//                 rows.forEach(row => {
+//                     const columns = row.querySelectorAll('td');
+//                     if (columns.length >= 4) {
+//                         const name = columns[0].innerText.trim();
+//                         const url = columns[0].querySelector('a')?.href || '';
+//                         const startTime = parseDate(columns[2].innerText.trim());
+//                         const endTime = parseDate(columns[3].innerText.trim());
+//                         const duration = (endTime - startTime) / (1000 * 60); // duration in minutes
+
+//                         upcomingContests.push({
+//                             platform: 'CodeChef',
+//                             name,
+//                             url,
+//                             startTime,
+//                             endTime,
+//                             duration,
+//                             status: 'Upcoming',
+//                         });
+//                     }
+//                 });
+//             }
+//             return upcomingContests;
+//         });
+
+//         console.log('CodeChef Contests:', contests);
+//         return contests;
 //     } catch (error) {
-//       console.error("Error fetching CodeChef contests:", error);
-//       return [];
+//         console.error('Error fetching CodeChef contests:', error);
+//         return [];
+//     } finally {
+//         await browser.close();
 //     }
-//   };
+// };
 
 // Save to DB 
 
 const saveContestsToDB = async (contests) => {
     try{
         const codeforcesContests = await fetchCodeforcesContest();
-        // const leetCodeContests = await fetchLeetCodeContest();
-        // const codechefContests = await fetchCodeChefContests();
-
-        const allContests = [...codeforcesContests];
+        const leetCodeContests = await fetchLeetCodeContests();
+        const codechefContests = await fetchCodeChefContests();
+        
+        const allContests = [...codeforcesContests, ...leetCodeContests,...codechefContests];
 
         await Contest.deleteMany({});
         await Contest.insertMany(allContests);

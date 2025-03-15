@@ -11,8 +11,8 @@ const contestSchema = new mongoose.Schema({
          required: true
    },
    url:{type: String, required: true},
-   startTime: {type: Date, required: true},
-    endTime: {type: Date, required: true},
+   startTime: {type: Date},
+    endTime: {type: Date},
    duration: {type: Number, required: true},
    status: {
        type: String,
