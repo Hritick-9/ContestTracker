@@ -90,7 +90,7 @@ const fetchLeetCodeContests = async () => {
             });
         });
         contests = contests.filter(c => c!==null);
-        console.log("contest", contests);
+        
         const upcomingContests = contests
             .map(contest => {
                 const parsedDate = parseLeetCodeDate(contest.start_time_text);
@@ -101,7 +101,7 @@ const fetchLeetCodeContests = async () => {
                 };
             })
 
-        console.log("contest_leetcode", upcomingContests);
+       
         return upcomingContests;
     } catch (error) {
         console.error("Error fetching LeetCode contests:", error);
@@ -121,65 +121,52 @@ const fetchLeetCodeContests = async () => {
 
 //for codechef
 
-// const fetchCodeChefContests = async () => {
-//     const browser = await puppeteer.launch({ headless: true });
-//     const page = await browser.newPage();
+const fetchCodeChefContests = async () => {
+    const browser = await puppeteer.launch({ headless: true });
+    const page = await browser.newPage();
 
-//     try {
-//         // Navigate to the CodeChef contests page
-//         await page.goto('https://www.codechef.com/contests', { waitUntil: 'domcontentloaded' });
+    try {
+        // Navigate to the CodeChef contests page
+        await page.goto('https://www.codechef.com/contests', { waitUntil: 'networkidle2',timeout:60000 });
          
+        await page.waitForSelector("#root",{timeout:60000});
          
-         
-//         // Wait for the contest tables to load
-//         await page.waitForSelector('.dataTable');
+        // Wait for the contest tables to load
+       
+        
 
-//         // Extract contest data
-//         const contests = await page.evaluate(() => {
-//             const parseDate = (dateStr) => {
-//                 const [day, month, year, time] = dateStr.split(' ');
-//                 return new Date(`${month} ${day}, ${year} ${time} UTC`);
-//             };
+        // Extract contest data
+        const contests = await page.evaluate(() => {
+            console.log("inside evaluate");
+            const upcomingSection = Array.from(document.querySelectorAll("._dataTable__container_7s2sw_417")).find(section=>
+                section.innerText.includes("START"));
+                console.log("upcomingSection",upcomingSection);
+            if(!upcomingSection) return [];
+            return Array.from(upcomingSection.querySelectorAll("tr")).map(row => {
+                const columns = row.querySelectorAll("td");
+                if (columns.length < 4) return null; // Ensure it's a valid row
 
-//             const upcomingContests = [];
-//             const tables = document.querySelectorAll('.dataTable');
-            
-//             // Assuming the first table is for ongoing contests and the second for upcoming
-//             if (tables.length > 1) {
-//                 const rows = tables[1].querySelectorAll('tbody tr');
-//                 rows.forEach(row => {
-//                     const columns = row.querySelectorAll('td');
-//                     if (columns.length >= 4) {
-//                         const name = columns[0].innerText.trim();
-//                         const url = columns[0].querySelector('a')?.href || '';
-//                         const startTime = parseDate(columns[2].innerText.trim());
-//                         const endTime = parseDate(columns[3].innerText.trim());
-//                         const duration = (endTime - startTime) / (1000 * 60); // duration in minutes
+                return {
+                    platform: "CodeChef",
+                    name: columns[0]?.innerText.trim(),
+                    url: "https://www.codechef.com" + (columns[0]?.querySelector("a")?.getAttribute("href") || ""),
+                    startTime: new Date(columns[1]?.innerText.trim()).toISOString(),
+                    endTime: new Date(columns[2]?.innerText.trim()).toISOString(),
+                    duration: null, // You may need to calculate this separately
+                };
+            }).filter(contest => contest !== null);
+        });
+        
 
-//                         upcomingContests.push({
-//                             platform: 'CodeChef',
-//                             name,
-//                             url,
-//                             startTime,
-//                             endTime,
-//                             duration,
-//                             status: 'Upcoming',
-//                         });
-//                     }
-//                 });
-//             }
-//             return upcomingContests;
-//         });
-
-//         console.log('CodeChef Contests:', contests);
-//         return contests;
-//     } catch (error) {
-//         console.error('Error fetching CodeChef contests:', error);
-//         return [];
-//     } finally {
-//         await browser.close();
-//     }
-// };
+        console.log('CodeChef Contests:', contests);
+        return contests;
+    } catch (error) {
+        console.error('Error fetching CodeChef contests:', error);
+        return [];
+    } finally {
+        await browser.close();
+    }
+};
 
 // Save to DB 
 
