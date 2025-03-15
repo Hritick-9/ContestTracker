@@ -1,5 +1,7 @@
 import axios from "axios";
-import Contest from "../src/models/Contest";
+import Contest from "../src/models/Contest.js";
+import cheerio from "cheerio";
+import moment from "moment";
 //From codeforces Fetching Contest
 const fetchCodeforcesContest = async () => {
     try{
@@ -25,17 +27,11 @@ const fetchCodeforcesContest = async () => {
 
 const fetchLeetCodeContest = async () => {
     try{
-      const response  = await axios.get("https://kontests.net/api/v1/leetcode");
-      const contests = response.data;
-      return contests.map((c) => ({
-        platform: "LeetCode",
-        name: c.name,
-        url: c.url,
-        startTime: new Date(c.start_time),
-        endTime: new Date(c.end_time),
-        duration: c.duration / 60, // Convert seconds to minutes
-        status: "Upcoming",
-      }));
+      const url = "https://leetcode.com/contest/";
+      const {data} = await axios.get(url);
+      const $ = cheerio.load(data);
+
+        const contests = [];
     }
     catch(err){
         console.error("Error getting contest from LeetCode Contest:",err);
@@ -46,37 +42,37 @@ const fetchLeetCodeContest = async () => {
 
 //From CodeChef Fetching Contest
 
-const fetchCodeChefContests = async () => {
-    try {
-      const response = await axios.get("https://kontests.net/api/v1/code_chef");
-      const contests = response.data;
+// const fetchCodeChefContests = async () => {
+//     try {
+//       const response = await axios.get("https://kontests.net/api/v1/code_chef");
+//       const contests = response.data;
   
-      return contests.map((c) => ({
-        platform: "CodeChef",
-        name: c.name,
-        url: c.url,
-        startTime: new Date(c.start_time),
-        endTime: new Date(c.end_time),
-        duration: c.duration / 60, // Convert seconds to minutes
-        status: "Upcoming",
-      }));
-    } catch (error) {
-      console.error("Error fetching CodeChef contests:", error);
-      return [];
-    }
-  };
+//       return contests.map((c) => ({
+//         platform: "CodeChef",
+//         name: c.name,
+//         url: c.url,
+//         startTime: new Date(c.start_time),
+//         endTime: new Date(c.end_time),
+//         duration: c.duration / 60, // Convert seconds to minutes
+//         status: "Upcoming",
+//       }));
+//     } catch (error) {
+//       console.error("Error fetching CodeChef contests:", error);
+//       return [];
+//     }
+//   };
 
 // Save to DB 
 
 const saveContestsToDB = async (contests) => {
     try{
-        const codeforcesContests = await fetchCodeChefContests();
-        const leetCodeContests = await fetchLeetCodeContest();
-        const codechefContests = await fetchCodeChefContests();
+        const codeforcesContests = await fetchCodeforcesContest();
+        // const leetCodeContests = await fetchLeetCodeContest();
+        // const codechefContests = await fetchCodeChefContests();
 
-        const allContests = [...codeforcesContests, ...leetCodeContests, ...codechefContests];
+        const allContests = [...codeforcesContests];
 
-        await Contest.deleteMany();
+        await Contest.deleteMany({});
         await Contest.insertMany(allContests);
         console.log("Contests Saved to DB");
     }catch(err){

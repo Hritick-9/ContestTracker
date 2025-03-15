@@ -10,7 +10,7 @@ const contestSchema = new mongoose.Schema({
          type: String,
          required: true
    },
-   url:{type: Strin, required: true},
+   url:{type: String, required: true},
    startTime: {type: Date, required: true},
     endTime: {type: Date, required: true},
    duration: {type: Number, required: true},
