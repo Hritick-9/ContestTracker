@@ -90,7 +90,7 @@ const fetchLeetCodeContests = async () => {
             });
         });
         contests = contests.filter(c => c!==null);
-        
+        console.log("contests",contests);
         const upcomingContests = contests
             .map(contest => {
                 const parsedDate = parseLeetCodeDate(contest.start_time_text);
@@ -100,7 +100,7 @@ const fetchLeetCodeContests = async () => {
                     startTime: parsedDate ? parsedDate.toISOString() : null, // ISO format
                 };
             })
-
+         
        
         return upcomingContests;
     } catch (error) {
